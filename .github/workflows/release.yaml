@@ -45,6 +45,9 @@ jobs:
   release:
     needs: build
     runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
     
     steps:
       - name: Checkout
@@ -76,8 +79,6 @@ jobs:
           files: |
             gguskin-*.zip
             gguskin-*.tar.gz
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Release without Changelog
         if: steps.check_changelog.outputs.changelog_exists == 'false'
@@ -89,5 +90,3 @@ jobs:
           files: |
             gguskin-*.zip
             gguskin-*.tar.gz
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
