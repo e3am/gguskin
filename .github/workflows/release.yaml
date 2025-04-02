@@ -1,0 +1,93 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Build Project
+        run: npm run build
+
+      - name: Archive for Release
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          zip -r gguskin-${VERSION}-dist.zip dist/
+          tar -czvf gguskin-${VERSION}-dist.tar.gz dist/
+
+      - name: Upload Release Archives
+        uses: actions/upload-artifact@v4
+        with:
+          name: release
+          path: |
+            gguskin-*.zip
+            gguskin-*.tar.gz
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download Release Archives
+        uses: actions/download-artifact@v4
+        with:
+          name: release
+          path: ./
+
+      - name: Check changelog.md
+        id: check_changelog
+        run: |
+          if [ -f "changelog.md" ]; then
+            echo "changelog_exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "changelog_exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Release with Changelog
+        if: steps.check_changelog.outputs.changelog_exists == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
+          body_path: changelog.md
+          draft: false
+          files: |
+            gguskin-*.zip
+            gguskin-*.tar.gz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Release without Changelog
+        if: steps.check_changelog.outputs.changelog_exists == 'false'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
+          draft: false
+          files: |
+            gguskin-*.zip
+            gguskin-*.tar.gz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
